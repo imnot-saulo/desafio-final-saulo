@@ -26,15 +26,31 @@
 - **Justificativa:** Schema é `NOT NULL`; nulo só adiaria a falha para o load com mensagem pior.
 - **Como validei:** Dados reais passaram sem exceção; caso inválido não existe na amostra (defesa validada por leitura do código).
 
+### Estratégia de idempotência: DELETE + reload na mesma transação
+
+- **Trecho pedido:** "Compare duas estratégias de idempotência (limpar tabelas antes de carregar vs ON CONFLICT) e escolha uma com base no meu schema; implemente no carregar."
+- **Resposta da IA (resumo):** Comparou as duas e escolheu `DELETE` na ordem inversa das FKs + `INSERT` na ordem das FKs, tudo numa única transação com rollback em qualquer erro.
+- **Decisão:** Aceitei a escolha da IA.
+- **Justificativa:** O destino precisa espelhar a origem para a reconciliação passar; `ON CONFLICT DO NOTHING` manteria linhas obsoletas se a origem encolhesse. Todas as tabelas têm PK, mas as FKs exigem ordem na limpeza — a transação única garante que um erro no meio desfaça tudo.
+- **Como validei:** Rodei o ETL duas vezes e as contagens (12/1000/5000/12455) não mudaram; injeti `cliente_id` inválido e o rollback preservou os dados (`ForeignKeyViolation`).
+
+### reconciliar() devolvendo bool com rótulo por verificação
+
+- **Trecho pedido:** "Imprima uma linha por verificação, no formato 'verificacao: OK' ou 'verificacao: FALHA (origem=..., destino=...)' e retorne um booleano para eu poder testar com pytest depois."
+- **Resposta da IA (resumo):** Compara `COUNT` e `SUM(valor_itens)` com tolerância de 0.01, imprime uma linha por verificação e devolve o `and` das duas; acrescentou o nome da verificação na linha para não perder qual falhou.
+- **Decisão:** Aceitei, inclusive o rótulo extra (`qtd_pedidos`, `soma_valor_itens`) que foge levemente ao formato pedido.
+- **Justificativa:** Sem o rótulo, duas linhas `verificacao: FALHA` seriam indistinguíveis; o formato original foi mantido.
+- **Como validei:** Com lista adulterada (4999 pedidos) imprimiu `FALHA` e retornou `False`; com os dados corretos, `OK` e `True`.
+
 ## Sugestões rejeitadas
 
-### [Título curto da entrada]
+### Adaptar o código para SQLite usando o schema_sqlite.sql
 
-- **Trecho pedido:** 
-- **Resposta da IA (resumo):** 
-- **Decisão:** 
-- **Justificativa:** 
-- **Como validei:** 
+- **Trecho pedido:** "schema.sql ou schema_sqlite.sql: use o que existir para descobrir se o banco é PostgreSQL ou SQLite e adapte o código e o SQL a ele."
+- **Resposta da IA (resumo):** Como os dois schemas existiam, avaliou suportar os dois drivers com uma variável `VERDEJAR_DB_DRIVER` e SQL duplicado (`strftime` para SQLite).
+- **Decisão:** Rejeitei; fiquei só no PostgreSQL.
+- **Justificativa:** `schema.sql` é o schema de registro (citado no contrato, `transformacoes.py` documenta PostgreSQL) e o `psycopg2-binary` já estava instalado; manter dois dialetos dobraria o teste sem necessidade. O SQLite fica como contingência documentada.
+- **Como validei:** O ETL rodou de ponta a ponta no PostgreSQL e as 4 consultas de validação (`DATE_TRUNC`) passaram.
 
 ## Falhas e retrabalho
 
@@ -45,3 +61,11 @@
 - **Decisão:** Primeira execução falhou com `SyntaxError`; a IA corrigiu para `volta` e o teste passou
 - **Justificativa:** Erro de digitação no heredoc PowerShell, detectado na hora pelo retorno do Python
 - **Como validei:** Segunda execução imprimiu `recarregados: 1000 == 1000`
+
+### Linha destrutiva no script de teste da reconciliação
+
+- **Trecho pedido:** "Teste os caminhos de erro: variáveis ausentes, rollback e FALHA da reconciliação."
+- **Resposta da IA (resumo):** O primeiro rascunho do script chamava `carregar(conn, [], [], [], [])` "para testar", o que executaria o `DELETE` das quatro tabelas e confirmaria o apagão.
+- **Decisão:** Reescrevi o script antes de executar; o teste passou a usar um pedido com `cliente_id` inválido para forçar o erro.
+- **Justificativa:** Listas vazias ainda passam pela limpeza — o DELETE rodaria e o commit confirmaria a perda dos dados.
+- **Como validei:** O script final falhou por `ForeignKeyViolation`, fez rollback e as contagens ficaram iguais às de antes.

@@ -1,8 +1,18 @@
 # -*- coding: utf-8 -*-
-"""Orquestração do ETL Verdejar: extração, transform e carga."""
+"""Orquestração do ETL Verdejar: extração, transform, carga e reconciliação."""
 from __future__ import annotations
 
+import sys
+
+from banco import get_conexao
 from brutos import carregar_brutos, salvar_brutos
+from carga import (
+    achatar_itens,
+    carregar,
+    contar_registros,
+    imprimir_contagens,
+    reconciliar,
+)
 from extracao import extrair_clientes, extrair_pedidos, ler_produtos_csv
 from transformacoes import aplicar_transformacoes, imprimir_contadores
 
@@ -41,10 +51,19 @@ def main(reaproveitar: bool = False) -> None:
     clientes_ok, pedidos_ok, contadores = aplicar_transformacoes(clientes, pedidos)
     imprimir_contadores(contadores)
 
-    # Bloco de carga (Etapa 4) entra aqui, depois das transformações.
+    itens = achatar_itens(pedidos_ok)
+
+    conn = get_conexao()
+    try:
+        carregar(conn, produtos, clientes_ok, pedidos_ok, itens)
+        imprimir_contagens(contar_registros(conn))
+        reconciliou = reconciliar(conn, pedidos_ok)
+    finally:
+        conn.close()
+
+    if not reconciliou:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    import sys
-
     main(reaproveitar="--brutos" in sys.argv)
