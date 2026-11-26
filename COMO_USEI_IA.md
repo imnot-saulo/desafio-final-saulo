@@ -42,6 +42,22 @@
 - **Justificativa:** Sem o rótulo, duas linhas `verificacao: FALHA` seriam indistinguíveis; o formato original foi mantido.
 - **Como validei:** Com lista adulterada (4999 pedidos) imprimiu `FALHA` e retornou `False`; com os dados corretos, `OK` e `True`.
 
+### Suíte pytest para as partes da ETL
+
+- **Trecho pedido:** "Adicione testes automatizados para as partes da ETL" (pytest, sem depender de API, brutos ou banco real).
+- **Resposta da IA (resumo):** Criou `conftest.py` na raiz para o `import etl` funcionar sem instalar o pacote, e três arquivos de teste: `test_estrutura.py` (contratos JSON/CSV), `test_transformacoes.py` (A1–A6 isolados por função) e `test_reconciliacao.py` (reconciliação em SQLite em memória com `schema_sqlite.sql`).
+- **Decisão:** Aceitei a estrutura; mantive o adaptador de conexão só no arquivo de teste e rejeitei teste dependente de API/banco real ou mock pesado de psycopg2.
+- **Justificativa:** Os testes rodam em qualquer máquina com `pip install pytest`; a reconciliação exercita o mesmo código de produção sem exigir PostgreSQL na suíte.
+- **Como validei:** `python -m pytest -q` → `32 passed`; os contadores A1–A6 testados batem com os valores reais (81, 151, 1037, 1255, 238).
+
+### README de entrega final com resultados das consultas
+
+- **Trecho pedido:** "Como ficará o README para entrega final: como rodar (API, banco, ETL, testes), caminho do banco escolhido e biblioteca de conexão, estratégia de idempotência" e "registrar os resultados das três consultas de validação".
+- **Resposta da IA (resumo):** Reescreveu o README com as seções de banco (PostgreSQL + `psycopg2-binary` + variáveis de ambiente), os 4 passos de como rodar, a estratégia de idempotência e a seção de validação em SQL com os resultados reais (tabela mensal com conferência `312047.75 = 312047.75 → OK`, estados RS 1543 / SC 1127 / PR 974 / SP 880 / MG 476 e 238 divergentes).
+- **Decisão:** Aceitei a estrutura e conferi cada número antes de gravar; os mesmos resultados foram comentados no `consultas_validacao.sql`.
+- **Justificativa:** O README passa a responder sozinho o que a avaliação cobra (rodar, banco, idempotência, validação) sem precisar de outro arquivo.
+- **Como validei:** Números batidos contra a execução real do ETL na Etapa 4 (5000 pedidos) e contra o contador A6 impresso; `32 passed` confirmado antes do commit `f6f1bff`.
+
 ## Sugestões rejeitadas
 
 ### Adaptar o código para SQLite usando o schema_sqlite.sql
