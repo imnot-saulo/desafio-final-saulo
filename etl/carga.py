@@ -166,6 +166,10 @@ def reconciliar(
         cur.execute("SELECT COALESCE(SUM(valor_itens), 0) FROM pedidos")
         destino_soma = cur.fetchone()[0]
 
+    # Drivers podem devolver float (SQLite) ou int; o destino vira Decimal
+    # para a comparacao nao depender do driver. No PostgreSQL ja e Decimal.
+    destino_soma = Decimal(str(destino_soma))
+
     origem_qtd = len(pedidos_transformados)
     origem_soma = sum(
         (p["valor_itens"] for p in pedidos_transformados), start=Decimal("0.00")
