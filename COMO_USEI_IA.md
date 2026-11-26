@@ -10,6 +10,22 @@
 - **Justificativa:** Segura a estrutura pedida pela avaliação e agiliza o registro de cada uso de IA.
 - **Como validei:** Conferi o Markdown renderizado e o preenchimento desta primeira entrada.
 
+### Padrão tupla (registro, flag) para contadores
+
+- **Trecho pedido:** Contadores A1–A6 sem estado global, cada função precisando permitir saber se tratou/mudou.
+- **Resposta da IA (resumo):** Propôs devolver sempre `(registro_novo, flag)` e somar as flags no orquestrador.
+- **Decisão:** Aceitei e apliquei em todas as funções de registro.
+- **Justificativa:** Funções continuam puras e testáveis isoladamente; sem globais.
+- **Como validei:** `main --brutos` imprimiu as 7 contagens conferidas contra os brutos (81, 151, 1037, 1255, 238).
+
+### Erro claro em formato inválido em vez de nulo
+
+- **Trecho pedido:** Definir comportamento para `data_pedido`/`valor_total` inválidos.
+- **Resposta da IA (resumo):** Sugestão de `ValueError` com valor e `id` do pedido, em vez de nulo silencioso.
+- **Decisão:** Aceitei.
+- **Justificativa:** Schema é `NOT NULL`; nulo só adiaria a falha para o load com mensagem pior.
+- **Como validei:** Dados reais passaram sem exceção; caso inválido não existe na amostra (defesa validada por leitura do código).
+
 ## Sugestões rejeitadas
 
 ### [Título curto da entrada]
